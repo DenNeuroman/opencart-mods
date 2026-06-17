@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="utf-8"?>
+<modification>
+    <name>ASSECURO.COM.UA — Contact Form Fix</name>
+    <code>assecuro_contact_fix</code>
+    <version>1.2</version>
+    <author>ASSECURO</author>
+    <link>https://assecuro.com.ua</link>
+
+    <file path="catalog/controller/information/contact.php">
+        <operation>
+            <search><![CDATA[
+		if (($this->request->server['REQUEST_METHOD'] == 'POST') && $this->validate()) {
+			$mail = new Mail($this->config->get('config_mail_engine'));
+			$mail->parameter = $this->config->get('config_mail_parameter');
+			$mail->smtp_hostname = $this->config->get('config_mail_smtp_hostname');
+			$mail->smtp_username = $this->config->get('config_mail_smtp_username');
+			$mail->smtp_password = html_entity_decode($this->config->get('config_mail_smtp_password'), ENT_QUOTES, 'UTF-8');
+			$mail->smtp_port = $this->config->get('config_mail_smtp_port');
+			$mail->smtp_timeout = $this->config->get('config_mail_smtp_timeout');
+
+			$mail->setTo($this->config->get('config_email'));
+			$mail->setFrom($this->request->post['email']);
+			$mail->setReplyTo($this->request->post['email']);
+			$mail->setSender(html_entity_decode($this->request->post['name'], ENT_QUOTES, 'UTF-8'));
+			$mail->setSubject(html_entity_decode(sprintf($this->language->get('email_subject'), $this->request->post['name'] . ' (' . $this->request->post['email'] . ')'), ENT_QUOTES, 'UTF-8'));
+			$mail->setText($this->request->post['enquiry']);
+			$mail->send();
+
+			$this->response->redirect($this->url->link('information/contact/success'));
+		}
+            ]]></search>
+            <add position="replace"><![CDATA[
+		if (($this->request->server['REQUEST_METHOD'] == 'POST') && $this->validate()) {
+
+			// Письмо менеджеру на основной ящик
+			$mail = new Mail($this->config->get('config_mail_engine'));
+			$mail->parameter = $this->config->get('config_mail_parameter');
+			$mail->smtp_hostname = $this->config->get('config_mail_smtp_hostname');
+			$mail->smtp_username = $this->config->get('config_mail_smtp_username');
+			$mail->smtp_password = html_entity_decode($this->config->get('config_mail_smtp_password'), ENT_QUOTES, 'UTF-8');
+			$mail->smtp_port = $this->config->get('config_mail_smtp_port');
+			$mail->smtp_timeout = $this->config->get('config_mail_smtp_timeout');
+
+			$mail->setTo($this->config->get('config_email'));
+			$mail->setFrom($this->config->get('config_mail_smtp_username'));
+			$mail->setReplyTo($this->request->post['email']);
+			$mail->setSender(html_entity_decode($this->request->post['name'], ENT_QUOTES, 'UTF-8'));
+			$mail->setSubject('[ASSECURO.COM.UA] Нове звернення від ' . html_entity_decode($this->request->post['name'], ENT_QUOTES, 'UTF-8'));
+			$mail->setText(
+				'========================================' . "\n" .
+				'  НОВЕ ЗВЕРНЕННЯ З САЙТУ ASSECURO.COM.UA' . "\n" .
+				'========================================' . "\n\n" .
+				'Ім\'я:     ' . html_entity_decode($this->request->post['name'], ENT_QUOTES, 'UTF-8') . "\n" .
+				'E-Mail:   ' . $this->request->post['email'] . "\n" .
+				'Сторінка: https://assecuro.com.ua/kontakti' . "\n\n" .
+				'Повідомлення:' . "\n" .
+				'------------------------------------------' . "\n" .
+				$this->request->post['enquiry'] . "\n" .
+				'------------------------------------------' . "\n\n" .
+				'Відповісти клієнту: натисніть "Відповісти" — лист піде на ' . $this->request->post['email']
+			);
+			$mail->send();
+
+			// Письма на дополнительные адреса из настроек магазина
+			$alert_emails_raw = $this->config->get('config_mail_alert_email');
+			if (!empty($alert_emails_raw)) {
+				if (is_array($alert_emails_raw)) {
+					$alert_emails = $alert_emails_raw;
+				} else {
+					$alert_emails = array_map('trim', explode(',', $alert_emails_raw));
+				}
+				foreach ($alert_emails as $alert_email) {
+					if (filter_var(trim($alert_email), FILTER_VALIDATE_EMAIL)) {
+						$mail_alert = new Mail($this->config->get('config_mail_engine'));
+						$mail_alert->parameter = $this->config->get('config_mail_parameter');
+						$mail_alert->smtp_hostname = $this->config->get('config_mail_smtp_hostname');
+						$mail_alert->smtp_username = $this->config->get('config_mail_smtp_username');
+						$mail_alert->smtp_password = html_entity_decode($this->config->get('config_mail_smtp_password'), ENT_QUOTES, 'UTF-8');
+						$mail_alert->smtp_port = $this->config->get('config_mail_smtp_port');
+						$mail_alert->smtp_timeout = $this->config->get('config_mail_smtp_timeout');
+						$mail_alert->setTo(trim($alert_email));
+						$mail_alert->setFrom($this->config->get('config_mail_smtp_username'));
+						$mail_alert->setReplyTo($this->request->post['email']);
+						$mail_alert->setSender(html_entity_decode($this->request->post['name'], ENT_QUOTES, 'UTF-8'));
+						$mail_alert->setSubject('[ASSECURO.COM.UA] Нове звернення від ' . html_entity_decode($this->request->post['name'], ENT_QUOTES, 'UTF-8'));
+						$mail_alert->setText(
+							'========================================' . "\n" .
+							'  НОВЕ ЗВЕРНЕННЯ З САЙТУ ASSECURO.COM.UA' . "\n" .
+							'========================================' . "\n\n" .
+							'Ім\'я:     ' . html_entity_decode($this->request->post['name'], ENT_QUOTES, 'UTF-8') . "\n" .
+							'E-Mail:   ' . $this->request->post['email'] . "\n" .
+							'Сторінка: https://assecuro.com.ua/kontakti' . "\n\n" .
+							'Повідомлення:' . "\n" .
+							'------------------------------------------' . "\n" .
+							$this->request->post['enquiry'] . "\n" .
+							'------------------------------------------' . "\n\n" .
+							'Відповісти клієнту: натисніть "Відповісти" — лист піде на ' . $this->request->post['email']
+						);
+						$mail_alert->send();
+					}
+				}
+			}
+
+			// Автоответ посетителю
+			$mail_reply = new Mail($this->config->get('config_mail_engine'));
+			$mail_reply->parameter = $this->config->get('config_mail_parameter');
+			$mail_reply->smtp_hostname = $this->config->get('config_mail_smtp_hostname');
+			$mail_reply->smtp_username = $this->config->get('config_mail_smtp_username');
+			$mail_reply->smtp_password = html_entity_decode($this->config->get('config_mail_smtp_password'), ENT_QUOTES, 'UTF-8');
+			$mail_reply->smtp_port = $this->config->get('config_mail_smtp_port');
+			$mail_reply->smtp_timeout = $this->config->get('config_mail_smtp_timeout');
+			$mail_reply->setTo($this->request->post['email']);
+			$mail_reply->setFrom($this->config->get('config_mail_smtp_username'));
+			$mail_reply->setReplyTo($this->config->get('config_email'));
+			$mail_reply->setSender($this->config->get('config_name'));
+			$mail_reply->setSubject('Ваше повідомлення отримано — ASSECURO');
+			$mail_reply->setText(
+				'Дякуємо, ' . html_entity_decode($this->request->post['name'], ENT_QUOTES, 'UTF-8') . '!' . "\n\n" .
+				'Ми отримали ваше повідомлення і зв\'яжемося з вами найближчим часом.' . "\n\n" .
+				'Ваше повідомлення:' . "\n" .
+				'--------------------------------------------------' . "\n" .
+				$this->request->post['enquiry'] . "\n" .
+				'--------------------------------------------------' . "\n\n" .
+				'З повагою,' . "\n" .
+				'Команда ASSECURO' . "\n" .
+				'https://assecuro.com.ua' . "\n" .
+				'Тел: +38 (073) 102-63-50'
+			);
+			$mail_reply->send();
+
+			$this->response->redirect($this->url->link('information/contact/success'));
+		}
+            ]]></add>
+        </operation>
+    </file>
+</modification>
